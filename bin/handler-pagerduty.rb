@@ -31,10 +31,21 @@ class PagerdutyHandler < Sensu::Handler
          required: false,
          default: 'pagerduty'
 
+  def get_status_string(check)
+    status = check['status']
+    if status == 1
+      return 'WARNING'
+    elsif status == 0
+      ## 0 means its a resolve event, need to look past it to get key
+      return get_status_string('status' => check['history'][-2].to_i)
+    else
+      return 'CRITICAL'
+    end
+  end
+
   def incident_key
-    json_config = config[:json_config]
     source = @event['check']['source'] || @event['client']['name']
-    incident_id = [source, @event['check']['name']].join('/')
+    incident_id = [source, @event['check']['name'], get_status_string(@event['check'])].join('/')
     dedup_rules = settings[json_config]['dedup_rules'] || {}
     dedup_rules.each do |key, val|
       incident_id = incident_id.gsub(Regexp.new(key), val)
@@ -42,8 +53,11 @@ class PagerdutyHandler < Sensu::Handler
     incident_id
   end
 
+  def json_config
+    @json_config ||= config[:json_config]
+  end
+
   def handle
-    json_config = config[:json_config]
     if @event['client']['pager_team']
       api_key = settings[json_config][@event['client']['pager_team']]['api_key']
     elsif @event['check']['pager_team']

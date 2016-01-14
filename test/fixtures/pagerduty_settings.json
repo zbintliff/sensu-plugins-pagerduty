@@ -1,0 +1,8 @@
+{
+  "pagerduty": {
+    "api_key": "123abc",
+    "TEST_TEAM": {
+      "api_key": "456cde"
+    }
+  }
+}
